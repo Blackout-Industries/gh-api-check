@@ -138,8 +138,8 @@ spec:
           enabled: true
           apps:
             - name: "devops-runner"
-              appId: "1187645"
-              installationId: "63220290"
+              appId: "1111111111"
+              installationId: "2222222222"
               privateKey:
                 externalSecret:
                   enabled: true
@@ -147,7 +147,7 @@ spec:
                   secretStoreKind: ClusterSecretStore
                   remoteSecrets:
                     oracle:
-                      secretName: ghe_devops_runner_app_pem
+                      secretName: ghe_ci_automation_app_pem1
                     aws: null
                     azure: null
                     gcp: null
@@ -162,7 +162,7 @@ spec:
                   secretStoreKind: ClusterSecretStore
                   remoteSecrets:
                     oracle:
-                      secretName: ghe_ci_automation_app_pem
+                      secretName: ghe_ci_automation_app_pem2
                     aws: null
                     azure: null
                     gcp: null
