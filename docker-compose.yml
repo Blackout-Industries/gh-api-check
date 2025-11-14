@@ -1,0 +1,85 @@
+version: '3.9'
+
+services:
+  # Single check mode
+  github-rate-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: github-rate-limit-checker:latest
+    container_name: github-rate-checker
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # OR use GitHub App (uncomment below)
+      # - GITHUB_APP_ID=${GITHUB_APP_ID}
+      # - GITHUB_APP_PRIVATE_KEY_PATH=/app/secrets/private-key.pem
+    # volumes:
+    #   # Mount private key if using GitHub App
+    #   - ./secrets/private-key.pem:/app/secrets/private-key.pem:ro
+    command: ["python", "github_rate_limit_checker.py"]
+    user: "1001:1001"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - monitoring
+    profiles:
+      - single-check
+
+  # Watch mode - continuous monitoring
+  github-rate-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: github-rate-limit-checker:latest
+    container_name: github-rate-watcher
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    command: ["python", "github_rate_limit_checker.py", "--watch", "--interval", "60"]
+    user: "1001:1001"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    networks:
+      - monitoring
+    profiles:
+      - watcher
+
+  # Prometheus metrics exporter
+  github-rate-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: github-rate-limit-checker:latest
+    container_name: github-rate-exporter
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    command: ["python", "github_rate_limit_checker.py", "--prometheus-port", "9090"]
+    user: "1001:1001"
+    ports:
+      - "9090:9090"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9090/metrics')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - monitoring
+    profiles:
+      - exporter
+
+networks:
+  monitoring:
+    driver: bridge

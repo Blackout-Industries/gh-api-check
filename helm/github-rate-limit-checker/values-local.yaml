@@ -1,0 +1,45 @@
+# Example values for local/testing deployment with existing secret
+# Usage:
+#   1. Create secret: kubectl create secret generic github-app-secret --from-file=private-key=./secrets/private-key.pem --from-literal=app-id=1425448 --from-literal=installation-id=71947549
+#   2. Install: helm install github-rate-checker ./helm/github-rate-limit-checker -f values-local.yaml
+
+image:
+  repository: github-rate-limit-checker
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+github:
+  authMethod: "app"
+  app:
+    appId: "1425448"
+    installationId: "71947549"
+    privateKey:
+      externalSecret:
+        enabled: false  # Disabled for local development
+      existingSecret: "github-app-secret"
+      existingSecretKey: "private-key"
+
+config:
+  prometheusEnabled: true
+  prometheusPort: 9090
+  watch: false
+  interval: 60
+
+serviceMonitor:
+  enabled: false  # Disabled for local development
+
+podDisruptionBudget:
+  enabled: false
+
+networkPolicy:
+  enabled: false  # Disabled for local development
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi

@@ -1,0 +1,294 @@
+# Default values for github-rate-limit-checker
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Image configuration
+image:
+  repository: ghcr.io/blackout-industries/gh-api-check
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+## Replica configuration
+replicaCount: 1
+
+## Service Account
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+## Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+## Pod labels
+podLabels:
+  app.kubernetes.io/component: monitoring
+
+## Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+## Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+    - ALL
+
+## Service configuration
+service:
+  type: ClusterIP
+  port: 9090
+  targetPort: metrics
+  annotations: {}
+
+## Prometheus metrics configuration
+metrics:
+  enabled: true
+  port: 9090
+  portName: metrics
+
+## ServiceMonitor for Prometheus Operator
+serviceMonitor:
+  enabled: true
+  # Namespace where ServiceMonitor will be created (defaults to release namespace)
+  namespace: ""
+  # Additional labels for ServiceMonitor
+  additionalLabels:
+    prometheus: kube-prometheus
+  # Interval at which metrics should be scraped
+  interval: 30s
+  # Timeout after which the scrape is ended
+  scrapeTimeout: 10s
+  # HonorLabels chooses the metric's labels on collisions with target labels
+  honorLabels: false
+
+## PodMonitor for Prometheus Operator (alternative to ServiceMonitor)
+podMonitor:
+  enabled: false
+  namespace: ""
+  additionalLabels: {}
+  interval: 30s
+  scrapeTimeout: 10s
+
+## GitHub Authentication Configuration
+## IMPORTANT: Choose ONE authentication method
+
+github:
+  # Authentication method: "token" or "app"
+  authMethod: "app"  # "token" or "app"
+
+  ## Option 1: Personal Access Token
+  token:
+    # Use existing secret
+    existingSecret: ""
+    existingSecretKey: "token"
+    # Or provide token directly (NOT recommended for production)
+    value: ""
+
+  ## Option 2: GitHub App Authentication (RECOMMENDED)
+  app:
+    # GitHub App ID
+    appId: "1425448"
+
+    # GitHub App Installation ID
+    installationId: "71947549"
+
+    # Private key configuration
+    privateKey:
+      # Use External Secrets Operator (RECOMMENDED)
+      externalSecret:
+        enabled: true
+        # Name of the ExternalSecret resource
+        name: github-app-credentials
+        # SecretStore reference
+        secretStoreName: aws-secretsmanager
+        secretStoreKind: SecretStore  # or ClusterSecretStore
+        # Remote secret configuration
+        remoteSecrets:
+          # AWS Secrets Manager
+          aws:
+            region: us-east-1
+            secretName: github-app-credentials
+            secretKey: private-key
+          # Azure Key Vault
+          azure:
+            vaultUrl: https://your-vault.vault.azure.net
+            secretName: github-app-private-key
+          # GCP Secret Manager
+          gcp:
+            projectID: your-project-id
+            secretName: github-app-private-key
+          # HashiCorp Vault
+          vault:
+            path: secret/data/github-app
+            key: private-key
+
+        # Target secret that will be created
+        targetSecretName: github-app-credentials
+        refreshInterval: 1h
+
+      # OR use existing Kubernetes secret
+      existingSecret: ""
+      existingSecretKey: "private-key"
+
+      # OR provide private key directly (NOT recommended for production)
+      value: ""
+
+## Application configuration
+config:
+  # Watch mode - continuously monitor rate limits
+  watch: false
+  # Interval in seconds for watch mode
+  interval: 60
+  # JSON output
+  jsonOutput: false
+  # Prometheus exporter mode
+  prometheusEnabled: true
+  prometheusPort: 9090
+
+## Resource limits and requests
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+## Liveness probe configuration
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /metrics
+    port: metrics
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+## Readiness probe configuration
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /metrics
+    port: metrics
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+## Startup probe configuration
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /metrics
+    port: metrics
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+
+## Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+## Node selector for pod assignment
+nodeSelector: {}
+
+## Tolerations for pod assignment
+tolerations: []
+
+## Affinity for pod assignment
+affinity: {}
+
+## Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 0
+  # maxUnavailable: 1
+
+## Network Policy
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow Prometheus scraping
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: monitoring
+      ports:
+      - protocol: TCP
+        port: 9090
+  egress:
+    # Allow DNS
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
+      ports:
+      - protocol: UDP
+        port: 53
+    # Allow HTTPS to GitHub API
+    - to:
+      - podSelector: {}
+      ports:
+      - protocol: TCP
+        port: 443
+
+## Priority Class
+priorityClassName: ""
+
+## Extra environment variables
+extraEnv: []
+# - name: CUSTOM_VAR
+#   value: "custom-value"
+
+## Extra volumes
+extraVolumes: []
+# - name: custom-volume
+#   configMap:
+#     name: custom-configmap
+
+## Extra volume mounts
+extraVolumeMounts: []
+# - name: custom-volume
+#   mountPath: /custom/path
+#   readOnly: true
+
+## Init containers
+initContainers: []
+
+## Sidecar containers
+sidecars: []

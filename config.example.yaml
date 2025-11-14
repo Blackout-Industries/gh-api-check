@@ -1,0 +1,60 @@
+# GitHub Rate Limit Checker Configuration
+# Copy this file to config.yaml and fill in your credentials
+# Multiple GitHub Apps can be monitored simultaneously
+
+# Personal Access Token (Option 1)
+# Use this for simple monitoring with a single token
+# token: ghp_xxxxxxxxxxxxxxxxxxxxx
+
+# GitHub Apps Configuration (Option 2)
+# Monitor multiple GitHub Apps and installations
+github_apps:
+  # First GitHub App (e.g., for production)
+  - name: production-app
+    app_id: "123456"
+    installation_id: "987654"
+    private_key_path: "/path/to/production-private-key.pem"
+    # OR provide private key directly (base64 encoded or PEM string)
+    # private_key: |
+    #   -----BEGIN RSA PRIVATE KEY-----
+    #   ...
+    #   -----END RSA PRIVATE KEY-----
+
+  # Second GitHub App (e.g., for staging)
+  - name: staging-app
+    app_id: "234567"
+    installation_id: "876543"
+    private_key_path: "/path/to/staging-private-key.pem"
+
+  # Third GitHub App (e.g., for KEDA scaler)
+  - name: keda-scaler-app
+    app_id: "345678"
+    installation_id: "765432"
+    private_key_path: "/secrets/keda-private-key.pem"
+
+# Monitoring Settings
+monitoring:
+  # Check interval in seconds (default: 60)
+  interval: 60
+
+  # Prometheus metrics port (default: 9090)
+  prometheus_port: 9090
+
+  # Enable JSON output
+  json_output: false
+
+  # Watch mode - continuously monitor
+  watch: true
+
+# Alert Thresholds
+alerts:
+  # Alert when remaining percentage drops below this value
+  warning_threshold: 30   # 30% remaining
+  critical_threshold: 10  # 10% remaining
+
+  # Resource categories to monitor
+  resources:
+    - core
+    - search
+    - graphql
+    - integration_manifest

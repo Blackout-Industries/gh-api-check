@@ -1,0 +1,259 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+
+---
+# Secret for GitHub token
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: monitoring
+type: Opaque
+stringData:
+  # Replace with your actual token or use sealed-secrets/external-secrets
+  token: "REPLACE_WITH_YOUR_GITHUB_TOKEN"
+
+---
+# ConfigMap for script (optional - if not using image)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: github-rate-limit-script
+  namespace: monitoring
+data:
+  # Script content would go here if needed
+  # For now, we use the script baked into the Docker image
+
+---
+# Deployment - Prometheus Exporter
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+  labels:
+    app: github-rate-limit-exporter
+    component: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: github-rate-limit-exporter
+  template:
+    metadata:
+      labels:
+        app: github-rate-limit-exporter
+        component: monitoring
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: github-rate-limit-exporter
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: exporter
+        image: github-rate-limit-checker:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - python
+        - github_rate_limit_checker.py
+        - --prometheus-port
+        - "9090"
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-token
+              key: token
+        ports:
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+            - ALL
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: metrics
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: metrics
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+automountServiceAccountToken: false
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+  labels:
+    app: github-rate-limit-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: github-rate-limit-exporter
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+  labels:
+    app: github-rate-limit-exporter
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: github-rate-limit-exporter
+  endpoints:
+  - port: metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+
+---
+# PodMonitor (alternative to ServiceMonitor)
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+  labels:
+    app: github-rate-limit-exporter
+spec:
+  selector:
+    matchLabels:
+      app: github-rate-limit-exporter
+  podMetricsEndpoints:
+  - port: metrics
+    interval: 30s
+    scrapeTimeout: 10s
+
+---
+# NetworkPolicy - restrict egress to GitHub API only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: github-rate-limit-exporter
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow HTTPS to GitHub API
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: github-rate-limit-exporter
+  namespace: monitoring
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: github-rate-limit-exporter
+
+---
+# HorizontalPodAutoscaler (optional - typically not needed for this workload)
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: github-rate-limit-exporter
+#   namespace: monitoring
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: github-rate-limit-exporter
+#   minReplicas: 1
+#   maxReplicas: 2
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       target:
+#         type: Utilization
+#         averageUtilization: 80

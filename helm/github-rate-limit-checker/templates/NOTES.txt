@@ -1,0 +1,71 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about this chart, run:
+  $ helm show all {{ .Chart.Name }}
+
+{{ if .Values.metrics.enabled -}}
+Prometheus metrics are available at:
+  http://{{ include "github-rate-limit-checker.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.metrics.port }}/metrics
+
+To test metrics locally:
+  $ kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "github-rate-limit-checker.fullname" . }} {{ .Values.metrics.port }}:{{ .Values.metrics.port }}
+  $ curl http://localhost:{{ .Values.metrics.port }}/metrics
+{{- end }}
+
+{{ if .Values.serviceMonitor.enabled -}}
+ServiceMonitor has been created for Prometheus Operator scraping.
+{{- end }}
+
+{{ if eq .Values.github.authMethod "app" -}}
+{{ if .Values.github.app.privateKey.externalSecret.enabled -}}
+External Secret has been configured to fetch GitHub App private key from:
+  - SecretStore: {{ .Values.github.app.privateKey.externalSecret.secretStoreName }}
+  - Target Secret: {{ .Values.github.app.privateKey.externalSecret.targetSecretName | default (printf "%s-app-credentials" (include "github-rate-limit-checker.fullname" .)) }}
+
+Verify ExternalSecret status:
+  $ kubectl get externalsecret -n {{ .Release.Namespace }} {{ .Values.github.app.privateKey.externalSecret.name | default (printf "%s-external" (include "github-rate-limit-checker.fullname" .)) }}
+  $ kubectl describe externalsecret -n {{ .Release.Namespace }} {{ .Values.github.app.privateKey.externalSecret.name | default (printf "%s-external" (include "github-rate-limit-checker.fullname" .)) }}
+{{- else if .Values.github.app.privateKey.existingSecret -}}
+Using existing secret: {{ .Values.github.app.privateKey.existingSecret }}
+{{- else -}}
+WARNING: No private key source configured!
+Please configure either:
+  - externalSecret.enabled=true (recommended)
+  - existingSecret with the secret name
+{{- end }}
+{{- end }}
+
+GitHub App Configuration:
+{{- if eq .Values.github.authMethod "app" }}
+  - App ID: {{ .Values.github.app.appId }}
+  - Installation ID: {{ .Values.github.app.installationId }}
+{{- else }}
+  - Using Personal Access Token
+{{- end }}
+
+Check pod status:
+  $ kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "github-rate-limit-checker.name" . }}
+
+View logs:
+  $ kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ include "github-rate-limit-checker.name" . }} -f
+
+For KEDA troubleshooting:
+  - Monitor rate limits during KEDA scaling events
+  - Look for 🚨 CRITICAL or ⚠️ WARNING in logs
+  - Adjust KEDA pollingInterval if hitting limits
+
+Documentation:
+  - GitHub API Rate Limits: https://docs.github.com/en/rest/rate-limit
+  - KEDA Scalers: https://keda.sh/docs/latest/scalers/
+
+{{ if .Values.autoscaling.enabled -}}
+Horizontal Pod Autoscaler is enabled:
+  - Min replicas: {{ .Values.autoscaling.minReplicas }}
+  - Max replicas: {{ .Values.autoscaling.maxReplicas }}
+{{- end }}
+
+{{ if .Values.networkPolicy.enabled -}}
+Network Policy is enabled - pod communication is restricted
+{{- end }}
