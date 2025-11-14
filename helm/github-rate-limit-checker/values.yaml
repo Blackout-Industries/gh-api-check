@@ -6,7 +6,7 @@
 image:
   repository: ghcr.io/blackout-industries/gh-api-check
   pullPolicy: IfNotPresent
-  tag: "1.0.0"
+  tag: "1.0.1"
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
