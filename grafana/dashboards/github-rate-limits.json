@@ -812,7 +812,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(github_rate_limit_remaining, app_name)",
+        "definition": "label_values(github_rate_limit_remaining{app_name!=\"default\"}, app_name)",
         "hide": 0,
         "includeAll": true,
         "label": "App Name",
@@ -821,11 +821,11 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(github_rate_limit_remaining, app_name)",
+          "query": "label_values(github_rate_limit_remaining{app_name!=\"default\"}, app_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
-        "regex": "",
+        "regex": "/^(?!default$).*/",
         "skipUrlSync": false,
         "sort": 1,
         "type": "query"
