@@ -215,7 +215,15 @@ networkPolicy:
     - Ingress
     - Egress
   ingress:
-    # Allow Prometheus scraping
+    # Allow Grafana Alloy scraping from alloy namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: alloy
+      ports:
+        - protocol: TCP
+          port: 9090
+    # Allow Prometheus scraping from monitoring namespace
     - from:
         - namespaceSelector:
             matchLabels:
