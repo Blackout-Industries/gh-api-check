@@ -456,10 +456,11 @@ def load_apps_from_env() -> List[AppCredentials]:
     app_id = os.getenv('GITHUB_APP_ID')
     installation_id = os.getenv('GITHUB_APP_INSTALLATION_ID')
     private_key_path = os.getenv('GITHUB_APP_PRIVATE_KEY_PATH')
+    app_name = os.getenv('GITHUB_APP_NAME', 'default')
 
     if token:
         return [AppCredentials(
-            name='default',
+            name=app_name,
             app_id='',
             installation_id='',
             private_key_path='',
@@ -467,7 +468,7 @@ def load_apps_from_env() -> List[AppCredentials]:
         )]
     elif app_id and private_key_path:
         return [AppCredentials(
-            name='default',
+            name=app_name,
             app_id=app_id,
             installation_id=installation_id or '',
             private_key_path=private_key_path
@@ -538,6 +539,7 @@ def main():
     parser.add_argument('--app-id', help='GitHub App ID (or use GITHUB_APP_ID env var)')
     parser.add_argument('--installation-id', help='GitHub App Installation ID (or use GITHUB_APP_INSTALLATION_ID env var)')
     parser.add_argument('--private-key', help='Path to GitHub App private key (or use GITHUB_APP_PRIVATE_KEY_PATH env var)')
+    parser.add_argument('--app-name', help='App name for single-app mode (or use GITHUB_APP_NAME env var, default: "default")')
     parser.add_argument('--config-file', help='Path to JSON config file with multiple apps')
     parser.add_argument('--apps-dir', help='Directory containing JSON files for multiple apps')
     parser.add_argument('--watch', action='store_true', help='Continuously monitor rate limits')
@@ -556,9 +558,10 @@ def main():
         apps = load_apps_from_directory(args.apps_dir)
     elif args.token or args.app_id:
         # Single app from CLI args
+        app_name = args.app_name or os.getenv('GITHUB_APP_NAME', 'default')
         if args.token:
             apps = [AppCredentials(
-                name='default',
+                name=app_name,
                 app_id='',
                 installation_id='',
                 private_key_path='',
@@ -566,7 +569,7 @@ def main():
             )]
         elif args.app_id and args.private_key:
             apps = [AppCredentials(
-                name='default',
+                name=app_name,
                 app_id=args.app_id,
                 installation_id=args.installation_id or '',
                 private_key_path=args.private_key
