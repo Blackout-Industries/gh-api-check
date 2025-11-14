@@ -71,6 +71,9 @@ spec:
         {{- end }}
         env:
         {{- if not .Values.multiApp.enabled }}
+        # App name for single-app mode metrics
+        - name: GITHUB_APP_NAME
+          value: {{ .Values.github.appName | quote }}
         {{- if eq .Values.github.authMethod "token" }}
         # Personal Access Token authentication
         - name: GITHUB_TOKEN

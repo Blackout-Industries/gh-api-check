@@ -120,6 +120,8 @@ multiApp:
 github:
   # Authentication method: "token" or "app"
   authMethod: "app" # "token" or "app"
+  # App name for metrics labels (default: "default")
+  appName: "default"
   ## Option 1: Personal Access Token
   token:
     # Use existing secret
