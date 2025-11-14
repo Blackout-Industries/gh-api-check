@@ -1,4 +1,4 @@
-# gh-api-check
+# gh-api-check | [![Build and Release](https://github.com/Blackout-Industries/gh-api-check/actions/workflows/build-release.yml/badge.svg)](https://github.com/Blackout-Industries/gh-api-check/actions/workflows/build-release.yml)
 
 
 Check GitHub API rate limits.
