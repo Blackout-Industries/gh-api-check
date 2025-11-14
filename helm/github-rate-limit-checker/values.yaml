@@ -82,6 +82,42 @@ podMonitor:
   scrapeTimeout: 10s
 ## GitHub Authentication Configuration
 ## IMPORTANT: Choose ONE authentication method
+
+## Multi-App Configuration (NEW FEATURE)
+## Set multiApp.enabled=true to monitor multiple GitHub Apps from single deployment
+multiApp:
+  # Enable multi-app mode
+  enabled: false
+  # List of GitHub Apps to monitor
+  apps: []
+    # Example configuration for multiple apps:
+    # - name: "devops-runner"
+    #   appId: "1187645"
+    #   installationId: "63220290"
+    #   privateKey:
+    #     externalSecret:
+    #       enabled: true
+    #       secretStoreName: oci-auth-cluster
+    #       secretStoreKind: ClusterSecretStore
+    #       remoteSecrets:
+    #         oracle:
+    #           secretName: devops_runner_app_pem
+    #       targetSecretName: github-app-devops-runner
+    # - name: "ci-automation"
+    #   appId: "2345678"
+    #   installationId: "87654321"
+    #   privateKey:
+    #     externalSecret:
+    #       enabled: true
+    #       secretStoreName: oci-auth-cluster
+    #       secretStoreKind: ClusterSecretStore
+    #       remoteSecrets:
+    #         oracle:
+    #           secretName: ci_automation_app_pem
+    #       targetSecretName: github-app-ci-automation
+
+## Single App Configuration (BACKWARD COMPATIBLE - DEFAULT)
+## When multiApp.enabled=false, uses this configuration
 github:
   # Authentication method: "token" or "app"
   authMethod: "app" # "token" or "app"

@@ -1,0 +1,25 @@
+{{- if .Values.multiApp.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "github-rate-limit-checker.fullname" . }}-apps-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "github-rate-limit-checker.labels" . | nindent 4 }}
+data:
+  apps.json: |
+    {
+      "apps": [
+        {{- range $index, $app := .Values.multiApp.apps }}
+        {{- if $index }},{{ end }}
+        {
+          "name": {{ $app.name | quote }},
+          "app_id": {{ $app.appId | quote }},
+          "installation_id": {{ $app.installationId | quote }},
+          "private_key_path": "/app/secrets/{{ $app.name }}/private-key"
+        }
+        {{- end }}
+      ]
+    }
+{{- end }}

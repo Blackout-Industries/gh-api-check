@@ -1,0 +1,94 @@
+# Example values for multi-app GitHub rate limit monitoring
+# This file demonstrates how to configure multiple GitHub Apps in a single deployment
+
+## Enable multi-app mode
+multiApp:
+  enabled: true
+  apps:
+    # App 1: DevOps Runner
+    - name: "devops-runner"
+      appId: "1187645"
+      installationId: "63220290"
+      privateKey:
+        externalSecret:
+          enabled: true
+          secretStoreName: oci-auth-cluster
+          secretStoreKind: ClusterSecretStore
+          remoteSecrets:
+            oracle:
+              secretName: ghe_devops_runner_app_pem
+            aws: null
+            azure: null
+            gcp: null
+            vault: null
+          targetSecretName: github-app-devops-runner
+          refreshInterval: 1h
+
+    # App 2: CI Automation
+    - name: "ci-automation"
+      appId: "2345678"
+      installationId: "87654321"
+      privateKey:
+        externalSecret:
+          enabled: true
+          secretStoreName: oci-auth-cluster
+          secretStoreKind: ClusterSecretStore
+          remoteSecrets:
+            oracle:
+              secretName: ghe_ci_automation_app_pem
+            aws: null
+            azure: null
+            gcp: null
+            vault: null
+          targetSecretName: github-app-ci-automation
+          refreshInterval: 1h
+
+    # App 3: Release Automation
+    - name: "release-automation"
+      appId: "3456789"
+      installationId: "98765432"
+      privateKey:
+        externalSecret:
+          enabled: true
+          secretStoreName: oci-auth-cluster
+          secretStoreKind: ClusterSecretStore
+          remoteSecrets:
+            oracle:
+              secretName: ghe_release_automation_app_pem
+            aws: null
+            azure: null
+            gcp: null
+            vault: null
+          targetSecretName: github-app-release-automation
+          refreshInterval: 1h
+
+## Node selector (optional - for dedicated DevOps nodes)
+nodeSelector:
+  workload: devops
+
+## Tolerations (optional - to run on tainted nodes)
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "devops"
+    effect: "NoSchedule"
+
+## Affinity (optional - for node affinity requirements)
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - devops
+
+## Resource limits (adjust based on number of apps)
+resources:
+  limits:
+    cpu: 500m      # Increased for multiple apps
+    memory: 256Mi  # Increased for multiple apps
+  requests:
+    cpu: 100m      # Increased for multiple apps
+    memory: 128Mi  # Increased for multiple apps
