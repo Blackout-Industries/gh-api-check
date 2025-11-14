@@ -52,6 +52,11 @@ spec:
         command:
         - python
         - github_rate_limit_checker.py
+        {{- if .Values.multiApp.enabled }}
+        # Multi-app mode
+        - --config-file
+        - /app/config/apps.json
+        {{- end }}
         {{- if .Values.config.prometheusEnabled }}
         - --prometheus-port
         - {{ .Values.config.prometheusPort | quote }}
@@ -65,6 +70,7 @@ spec:
         - --json
         {{- end }}
         env:
+        {{- if not .Values.multiApp.enabled }}
         {{- if eq .Values.github.authMethod "token" }}
         # Personal Access Token authentication
         - name: GITHUB_TOKEN
@@ -86,6 +92,7 @@ spec:
               key: installation-id
         - name: GITHUB_APP_PRIVATE_KEY_PATH
           value: /app/secrets/private-key.pem
+        {{- end }}
         {{- end }}
         {{- with .Values.extraEnv }}
         {{- toYaml . | nindent 8 }}
@@ -109,7 +116,18 @@ spec:
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         volumeMounts:
-        {{- if eq .Values.github.authMethod "app" }}
+        {{- if .Values.multiApp.enabled }}
+        # Multi-app mode: mount config and all app secrets
+        - name: apps-config
+          mountPath: /app/config
+          readOnly: true
+        {{- range .Values.multiApp.apps }}
+        - name: app-{{ .name }}-key
+          mountPath: /app/secrets/{{ .name }}
+          readOnly: true
+        {{- end }}
+        {{- else if eq .Values.github.authMethod "app" }}
+        # Single app mode
         - name: github-app-key
           mountPath: /app/secrets
           readOnly: true
@@ -123,7 +141,22 @@ spec:
       {{- toYaml . | nindent 6 }}
       {{- end }}
       volumes:
-      {{- if eq .Values.github.authMethod "app" }}
+      {{- if .Values.multiApp.enabled }}
+      # Multi-app mode: mount config and all app secrets
+      - name: apps-config
+        configMap:
+          name: {{ include "github-rate-limit-checker.fullname" . }}-apps-config
+      {{- range .Values.multiApp.apps }}
+      - name: app-{{ .name }}-key
+        secret:
+          secretName: {{ .privateKey.externalSecret.targetSecretName | default (printf "%s-%s" (include "github-rate-limit-checker.fullname" $) .name) }}
+          items:
+          - key: private-key
+            path: private-key
+            mode: 0400
+      {{- end }}
+      {{- else if eq .Values.github.authMethod "app" }}
+      # Single app mode
       - name: github-app-key
         secret:
           secretName: {{ include "github-rate-limit-checker.appSecretName" . }}
