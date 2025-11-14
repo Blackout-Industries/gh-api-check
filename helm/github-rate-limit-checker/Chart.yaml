@@ -2,8 +2,8 @@ apiVersion: v2
 name: github-rate-limit-checker
 description: GitHub API rate limit monitoring
 type: application
-version: 1.1.4
-appVersion: "1.1.4"
+version: 1.1.5
+appVersion: "1.1.5"
 keywords:
   - github
   - rate-limit
