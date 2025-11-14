@@ -95,9 +95,9 @@ github:
   ## Option 2: GitHub App Authentication (RECOMMENDED)
   app:
     # GitHub App ID
-    appId: "1425448"
+    appId: ""
     # GitHub App Installation ID
-    installationId: "71947549"
+    installationId: ""
     # Private key configuration
     privateKey:
       # Use External Secrets Operator (RECOMMENDED)
@@ -106,14 +106,17 @@ github:
         # Name of the ExternalSecret resource
         name: github-app-credentials
         # SecretStore reference
-        secretStoreName: aws-secretsmanager
-        secretStoreKind: SecretStore # or ClusterSecretStore
+        secretStoreName: oci-auth-cluster
+        secretStoreKind: ClusterSecretStore
         # Remote secret configuration
         remoteSecrets:
+          # Oracle Vault
+          oracle:
+            secretName: your-oracle-secret-name
           # AWS Secrets Manager
           aws:
             region: us-east-1
-            secretName: github-app-credentials
+            secretName: your-aws-secret-name
             secretKey: private-key
           # Azure Key Vault
           azure:
