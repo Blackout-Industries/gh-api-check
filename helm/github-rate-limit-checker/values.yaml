@@ -67,8 +67,8 @@ serviceMonitor:
   # Additional labels for ServiceMonitor
   additionalLabels:
     prometheus: kube-prometheus
-  # Interval at which metrics should be scraped
-  interval: 30s
+  # Interval at which metrics should be scraped, matches config.interval
+  interval: 60s
   # Timeout after which the scrape is ended
   scrapeTimeout: 10s
   # HonorLabels chooses the metric's labels on collisions with target labels
@@ -78,7 +78,7 @@ podMonitor:
   enabled: false
   namespace: ""
   additionalLabels: {}
-  interval: 30s
+  interval: 60s
   scrapeTimeout: 10s
 ## GitHub Authentication Configuration
 ## IMPORTANT: Choose ONE authentication method
@@ -179,7 +179,7 @@ github:
 config:
   # Watch mode - continuously monitor rate limits
   watch: false
-  # Interval in seconds for watch mode
+  # Seconds between rate limit collections, always passed as --interval
   interval: 60
   # JSON output
   jsonOutput: false
@@ -187,44 +187,45 @@ config:
   prometheusEnabled: true
   prometheusPort: 9090
 ## Resource limits and requests
+## No CPU limit: the process is idle between collections and throttling only slows shutdown
 resources:
   limits:
-    cpu: 200m
     memory: 128Mi
   requests:
     cpu: 50m
-    memory: 64Mi
+    memory: 128Mi
 ## Liveness probe configuration
+## /healthz and /ready answer from cached state, they never call GitHub
 livenessProbe:
   enabled: true
   httpGet:
-    path: /metrics
+    path: /healthz
     port: metrics
   initialDelaySeconds: 15
   periodSeconds: 20
-  timeoutSeconds: 5
+  timeoutSeconds: 3
   failureThreshold: 3
   successThreshold: 1
 ## Readiness probe configuration
 readinessProbe:
   enabled: true
   httpGet:
-    path: /metrics
+    path: /ready
     port: metrics
   initialDelaySeconds: 5
   periodSeconds: 10
-  timeoutSeconds: 5
+  timeoutSeconds: 3
   failureThreshold: 3
   successThreshold: 1
 ## Startup probe configuration
 startupProbe:
   enabled: false
   httpGet:
-    path: /metrics
+    path: /healthz
     port: metrics
   initialDelaySeconds: 0
   periodSeconds: 10
-  timeoutSeconds: 5
+  timeoutSeconds: 3
   failureThreshold: 30
   successThreshold: 1
 ## Autoscaling configuration
