@@ -11,6 +11,7 @@ Monitor GitHub API rate limits for single or multiple GitHub Apps from a single 
 - ✅ Grafana dashboard with label-based filtering
 - ✅ Concurrent rate limit checking for multiple apps
 - ✅ Token caching and automatic refresh
+- ✅ Background collection with cached scrapes, plus `/healthz` and `/ready` endpoints
 
 ## Usage
 
@@ -174,6 +175,23 @@ spec:
 
 See `helm/github-rate-limit-checker/values-multiapp-example.yaml` for a complete example.
 
+## What the numbers mean
+
+GitHub accounts the primary REST rate limit **per installation access token**, not per GitHub App.
+This exporter mints its own installation token and therefore reports the budget of *that* token only.
+Any other token minted for the same App - a KEDA scaler, a runner controller, a workflow - gets its own
+budget, and what those tokens spend is invisible here. Read `github_rate_limit_remaining` as "how much
+of its own budget this exporter has left", not as "how much the App has left across all of its consumers".
+
+The exporter collects on a timer (`--interval`, default 60s) in a background thread and every HTTP
+endpoint answers from the last snapshot, so scrapes and kubelet probes never wait on GitHub.
+
+### HTTP endpoints
+
+- `/metrics` - the cached snapshot in Prometheus exposition format
+- `/healthz` - 200 while the process is up
+- `/ready` - 200 when the last successful collection is younger than 3 x `--interval`, otherwise 503
+
 ## Prometheus Metrics
 
 Metrics are exported with labels for filtering:
@@ -202,6 +220,12 @@ github_rate_limit_remaining{resource="actions_runner_registration"}
 - `github_graphql_rate_limit_limit` - GraphQL rate limit maximum
 - `github_graphql_rate_limit_remaining` - GraphQL remaining calls
 - `github_graphql_rate_limit_used` - GraphQL used calls
+
+Exporter health metrics (labelled with `app_name` only):
+
+- `github_exporter_scrape_duration_seconds` - duration of the last background collection
+- `github_exporter_last_success_timestamp_seconds` - Unix timestamp of the last successful collection (0 = never)
+- `github_exporter_scrape_errors_total` - failed background collections
 
 ### Labels
 
@@ -241,7 +265,7 @@ Automated builds via GitHub Actions on push to main.
 - ConfigMap for app list configuration
 - One ExternalSecret per app for credentials
 - Concurrent rate limit checking with ThreadPoolExecutor
-- Token caching (1-hour expiry with 5-min refresh buffer)
+- Token caching (expiry taken from the token response, 5-min refresh buffer)
 - Metrics include unique `app_name`, `app_id`, and `installation_id` labels
 
 ## Requirements
@@ -250,6 +274,7 @@ Automated builds via GitHub Actions on push to main.
 - PyJWT (for GitHub App authentication)
 - cryptography
 - requests
+- prometheus-client
 
 For Kubernetes:
 - External Secrets Operator (for secret management)

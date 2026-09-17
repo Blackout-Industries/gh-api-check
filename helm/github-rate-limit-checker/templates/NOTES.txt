@@ -12,6 +12,10 @@ Prometheus metrics are available at:
 To test metrics locally:
   $ kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "github-rate-limit-checker.fullname" . }} {{ .Values.metrics.port }}:{{ .Values.metrics.port }}
   $ curl http://localhost:{{ .Values.metrics.port }}/metrics
+
+Health endpoints (served from cached state, no GitHub calls):
+  /healthz  - process is up
+  /ready    - a collection succeeded within the last {{ mul .Values.config.interval 3 }}s
 {{- end }}
 
 {{ if .Values.serviceMonitor.enabled -}}

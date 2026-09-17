@@ -20,12 +20,15 @@ RUN pip install --prefix=/install --no-warn-script-location -r requirements.txt
 
 FROM python:3.11-slim
 
+ARG VERSION=dev
+
 LABEL maintainer="DevOps Team" \
       description="GitHub API Rate Limit Checker" \
-      version="1.0.0" 
+      version="${VERSION}"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    GH_API_CHECK_VERSION="${VERSION}" \
     PATH="/home/appuser/.local/bin:$PATH"
 
 RUN apt-get update && \
@@ -52,8 +55,8 @@ USER 1001
 
 EXPOSE 9090
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:9090/healthz || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
